@@ -12,6 +12,9 @@ const AIChat = () => {
     const [isListening, setIsListening] = useState(false);
     const [voiceEnabled, setVoiceEnabled] = useState(true);
 
+    const [userApiKey, setUserApiKey] = useState('');
+    const [isApiKeySet, setIsApiKeySet] = useState(false);
+
     const speak = (text) => {
         if (!voiceEnabled || !window.speechSynthesis) return;
         window.speechSynthesis.cancel();
@@ -22,6 +25,8 @@ const AIChat = () => {
     };
 
     const toggleListen = () => {
+        if (!isApiKeySet) return;
+
         if (isListening) {
             setIsListening(false);
             window.speechRecognitionInstance?.stop();
@@ -57,7 +62,19 @@ const AIChat = () => {
     Interests: Generative art, AI models, and optimizing web performance.
   `;
 
+    const handleSaveApiKey = () => {
+        if (userApiKey.trim().length > 10) {
+            setIsApiKeySet(true);
+            setMessages(prev => [...prev, { role: 'ai', text: "API Key verified. How can I assist you today?" }]);
+            speak("API Key verified. How can I assist you today?");
+        } else {
+            alert("Please enter a valid Google Gemini API key.");
+        }
+    };
+
     const handleAsk = async (overrideQuery = null) => {
+        if (!isApiKeySet) return;
+
         const textQuery = typeof overrideQuery === 'string' ? overrideQuery : query;
         if (!textQuery.trim()) return;
 
@@ -67,19 +84,8 @@ const AIChat = () => {
         setLoading(true);
 
         try {
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (!apiKey || apiKey === 'your_google_gemini_api_key_here') {
-                setTimeout(() => {
-                    const text = 'Demo mode active (API key missing). To chat, please add your Gemini API key to .env!';
-                    setMessages(prev => [...prev, { role: 'ai', text }]);
-                    speak(text);
-                    setLoading(false);
-                }, 1000);
-                return;
-            }
-
             const res = await axios.post(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey.trim()}`,
                 {
                     contents: [{ parts: [{ text: `${resumeContext}\n\nUser Question: ${textQuery}` }] }]
                 }
@@ -91,9 +97,15 @@ const AIChat = () => {
         } catch (error) {
             console.error('AI Error:', error.response?.data || error);
             const errorMsg = error.response?.data?.error?.message || error.message || "Unknown anomaly";
-            const errText = `Network Anomaly: ${errorMsg}`;
+            const errText = `Network Anomaly: ${errorMsg}. Your API key might be invalid or expired.`;
             setMessages(prev => [...prev, { role: 'ai', text: errText }]);
             speak(errText);
+
+            // If it's an auth error, prompt them to re-enter
+            if (error.response?.status === 400 || error.response?.status === 403) {
+                setIsApiKeySet(false);
+                setUserApiKey('');
+            }
         } finally {
             setLoading(false);
         }
@@ -175,33 +187,65 @@ const AIChat = () => {
 
                     {/* Input Form */}
                     <div className="p-4 bg-zinc-900/80 border-t border-white/10 z-20">
-                        <div className="relative flex items-center">
-                            <input
-                                type="text"
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                placeholder="Initialize interface query..."
-                                className="w-full bg-zinc-950/50 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-4 pr-24 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono text-sm"
-                                disabled={loading || isListening}
-                            />
-                            <div className="absolute right-2 flex items-center space-x-1">
-                                <button
-                                    onClick={toggleListen}
-                                    title="Voice Input"
-                                    className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-                                >
-                                    {isListening ? <MicOff size={20} /> : <Mic size={20} />}
-                                </button>
-                                <button
-                                    onClick={() => handleAsk(query)}
-                                    disabled={loading || (!query.trim() && !isListening)}
-                                    className="p-2 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 hover:text-cyan-200 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    <Send size={20} className="transform -translate-y-px translate-x-px" />
-                                </button>
+
+                        {!isApiKeySet ? (
+                            <div className="flex flex-col space-y-3">
+                                <div className="text-xs text-yellow-400/80 flex items-center mb-1">
+                                    <Sparkles size={14} className="mr-1" /> To prevent abuse, please provide your own free Gemini API Key to chat.
+                                </div>
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="password"
+                                        value={userApiKey}
+                                        onChange={(e) => setUserApiKey(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSaveApiKey()}
+                                        placeholder="Paste your Gemini API Key here..."
+                                        className="w-full bg-zinc-950/50 border border-yellow-500/30 text-white placeholder-slate-500 rounded-xl px-4 py-4 pr-32 focus:outline-none focus:border-yellow-500/70 focus:ring-1 focus:ring-yellow-500/50 transition-all font-mono text-sm"
+                                    />
+                                    <div className="absolute right-2 flex items-center space-x-1">
+                                        <button
+                                            onClick={handleSaveApiKey}
+                                            disabled={!userApiKey.trim()}
+                                            className="px-4 py-2 bg-yellow-500/20 text-yellow-500 font-semibold hover:bg-yellow-500/30 rounded-lg transition-colors disabled:opacity-50 text-sm flex items-center"
+                                        >
+                                            Connect <Sparkles size={14} className="ml-1" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors self-start ml-2 underline underline-offset-2">
+                                    Get a free Gemini API Key here
+                                </a>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="relative flex items-center">
+                                <input
+                                    type="text"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Initialize interface query..."
+                                    className="w-full bg-zinc-950/50 border border-white/10 text-white placeholder-slate-500 rounded-xl px-4 py-4 pr-24 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono text-sm"
+                                    disabled={loading || isListening}
+                                />
+                                <div className="absolute right-2 flex items-center space-x-1">
+                                    <button
+                                        onClick={toggleListen}
+                                        title="Voice Input"
+                                        className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
+                                    >
+                                        {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                                    </button>
+                                    <button
+                                        onClick={() => handleAsk(query)}
+                                        disabled={loading || (!query.trim() && !isListening)}
+                                        className="p-2 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 hover:text-cyan-200 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        <Send size={20} className="transform -translate-y-px translate-x-px" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 </motion.div>
             </div>

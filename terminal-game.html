@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRIKRISHNA'S TERMINAL ADVENTURE</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #0f0;
+            --highlight-color: #fff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            line-height: 1.4;
+            overflow: hidden;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .flicker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.01);
+            opacity: 0;
+            pointer-events: none;
+            animation: crt-flicker 0.15s infinite;
+            z-index: 49;
+        }
+
+        @keyframes crt-flicker {
+            0% {
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.05;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .terminal-container {
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+            z-index: 10;
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-color) var(--bg-color);
+        }
+
+        .output {
+            flex-grow: 1;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 20px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            padding-bottom: 40px;
+        }
+
+        .prompt {
+            margin-right: 10px;
+        }
+
+        #cmd-text {
+            white-space: pre;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: var(--text-color);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        #hidden-input {
+            position: absolute;
+            top: -1000px;
+            opacity: 0;
+        }
+
+        .badges-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 60;
+            pointer-events: none;
+            text-align: right;
+        }
+
+        .badge {
+            border: 1px solid var(--text-color);
+            background: rgba(0, 255, 0, 0.1);
+            padding: 5px 10px;
+            font-weight: bold;
+            box-shadow: 0 0 5px var(--text-color);
+            animation: slideIn 0.5s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .error-text {
+            color: #f00;
+            text-shadow: 0 0 5px #f00;
+        }
+
+        .success-text {
+            color: #0f0;
+            font-weight: bold;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .highlight {
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+        }
+
+        .title-text {
+            color: #0ff;
+            font-weight: bold;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            display: none;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="scanlines"></div>
+    <div class="flicker"></div>
+    <canvas id="matrix-canvas"></canvas>
+    <div class="badges-panel" id="badges-panel"></div>
+
+    <div class="terminal-container" id="terminal">
+        <div class="output" id="output"></div>
+        <div class="input-wrapper">
+            <span class="prompt" id="prompt-text">srikrishna@portfolio:~$</span>
+            <span id="cmd-text"></span><span class="cursor"></span>
+        </div>
+        <input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off"
+            spellcheck="false" />
+    </div>
+
+    <script type="module">
+        const outputDiv = document.getElementById('output');
+        const cmdText = document.getElementById('cmd-text');
+        const hiddenInput = document.getElementById('hidden-input');
+        const terminal = document.getElementById('terminal');
+        const badgesPanel = document.getElementById('badges-panel');
+        const matrixCanvas = document.getElementById('matrix-canvas');
+
+        const MY_DATA = {
+            name: "SRIKRISHNA S",
+            contact: {
+                GitHub: "https://github.com/SRIKRISH-S",
+                LinkedIn: "https://www.linkedin.com/in/srikrishna-s-b47519307/",
+                Email: "krishn9706@gmail.com"
+            },
+            executiveSummary: [
+                "I am a pragmatic, product-minded software engineer specializing in applied Machine",
+                "Learning, MLOps, and full-stack systems engineering. I combine rigorous algorithmic",
+                "thinking with production-grade software practices to convert research, prototypes,",
+                "and ideas into reliable, scalable products. My work sits at the intersection of",
+                "intelligent systems, cloud-native infrastructure, and data-driven productization —",
+                "with a focus on real-world deployment, reproducibility, and measurable metrics."
+            ],
+            coreStrengths: [
+                "- Production ML & inference engineering: model optimization, latency tuning.",
+                "- MLOps & CI/CD: reproducible experiments, data versioning, deployment.",
+                "- Cloud-native systems: Docker, Kubernetes, Terraform, Helm, observability.",
+                "- Backend & APIs: Python (FastAPI/Flask), asynchronous services, gRPC, REST.",
+                "- Data engineering: ETL, streaming basics, batch pipelines, SQL/NoSQL schema.",
+                "- Software craftsmanship: test automation, code reviews, clean architecture."
+            ],
+            skills: [
+                "Language       : Python, C++, Java, JavaScript, TypeScript, SQL, Bash",
+                "ML/DL          : PyTorch, TensorFlow, Hugging Face, scikit-learn, XGBoost",
+                "MLOps          : MLflow, DVC, W&B, Docker, NVIDIA toolchain (CUDA)",
+                "Cloud & Infra  : AWS, GCP, Azure, Terraform, Helm, Kubernetes",
+                "Backend / APIs : FastAPI, Flask, Node.js/Express, REST, gRPC, WebSockets",
+                "Frontend       : React, Next.js, recharts, d3 basics",
+                "Data           : PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch",
+                "DevOps & CI/CD : Git, GitHub Actions, GitLab CI, Docker Hub",
+                "Testing & QA   : pytest, unittest, integration testing"
+            ],
+            projects: [
+                "[1] ProactiFab: Predictive Maintenance for MSMEs (PyTorch, Docker, FastAPI)",
+                "[2] LocalBizAI: Voice-first Business Assistant (Open-source ASR, LangChain)",
+                "[3] Portfolio Website & CI/CD: Automated deploy pipelines via GitHub Actions",
+                "[4] LeetCode Track: Curated algorithmic solutions (C++, Python)"
+            ],
+            future: [
+                "EdgeVision++: Real-time Multi-Model Inference on K8s at the Edge",
+                "AgentStudio: LLM Agent Playground with Tools & Safety Layers",
+                "SmartFleet: Predictive Fleet Analytics & Routing Optimizer"
+            ]
+        };
+
+        const LEVELS = [
+            {
+                title: "LEVEL 1: The Beginning",
+                desc: "You arrive at Chennai Institute of Technology, pursuing a B.Tech in IT. You are learning to code.\n\nType the Python command to print 'Hello World' to continue.",
+                answers: ['print("hello world")', "print('hello world')"],
+                badge: "Early Adopter"
+            },
+            {
+                title: "LEVEL 2: First Projects",
+                desc: "You've mastered the basics and built your first portfolio website.\n\nWhat command do you use to check the status of your git repository?",
+                answers: ["git status"],
+                badge: "Builder"
+            },
+            {
+                title: "LEVEL 3: AI Discovery",
+                desc: "The world of Machine Learning calls to you.\n\nType the python code to import PyTorch.",
+                answers: ["import torch"],
+                badge: "ML Explorer"
+            },
+            {
+                title: "LEVEL 4: Hackathon Victories",
+                desc: "You build ProactiFab and LocalBizAI. Time to containerize them for deployment.\n\nWhat command builds a docker image from a Dockerfile in the current directory?",
+                answers: ["docker build .", "docker build -t myapp ."],
+                badge: "Hackathon Hero"
+            },
+            {
+                title: "LEVEL 5: Production Engineering",
+                desc: "You learn MLOps and cloud-native systems, mastering Kubernetes to take models to production.\n\nYou need to apply a K8s configuration defined in 'deploy.yaml'. What is the command?",
+                answers: ["kubectl apply -f deploy.yaml"],
+                badge: "Production Pro"
+            }
+        ];
+
+        let gameState = { level: 0, badges: [], easterEggs: [], commandsTyped: 0 };
+        let cmdHistory = [];
+        let historyIdx = -1;
+        let isBooting = true;
+
+        let aiApiKey = "";
+        try { aiApiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; } catch (e) { }
+        if (!aiApiKey) { aiApiKey = localStorage.getItem('srikrishna_gemini_api_key') || ""; }
+
+        function init() {
+            terminal.addEventListener('click', focusInput);
+            loadGame();
+            bootSequence();
+            hiddenInput.addEventListener('keydown', handleKeyDown);
+            hiddenInput.addEventListener('input', () => cmdText.textContent = hiddenInput.value);
+            focusInput();
+        }
+
+        function focusInput() { if (!isBooting) hiddenInput.focus(); }
+
+        function loadGame() {
+            const saved = localStorage.getItem('srikrishna_terminal_game');
+            if (saved) {
+                try { gameState = JSON.parse(saved); } catch (e) { }
+            }
+            gameState.badges.forEach(b => {
+                const span = document.createElement('div');
+                span.className = 'badge'; span.innerText = `🏆 ${b}`;
+                badgesPanel.appendChild(span);
+            });
+        }
+
+        function saveGame() {
+            localStorage.setItem('srikrishna_terminal_game', JSON.stringify(gameState));
+        }
+
+        function printLine(text, cls = '') {
+            const div = document.createElement('div');
+            if (cls) div.className = cls;
+            div.innerText = text;
+            outputDiv.appendChild(div);
+            scrollToBottom();
+        }
+
+        function printHTML(htmlText) {
+            const div = document.createElement('div');
+            div.innerHTML = htmlText;
+            outputDiv.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() { terminal.scrollTop = terminal.scrollHeight; }
+
+        async function typeWriter(text, speed = 10, cls = '') {
+            return new Promise(resolve => {
+                const div = document.createElement('div');
+                if (cls) div.className = cls;
+                outputDiv.appendChild(div);
+                let i = 0;
+                function type() {
+                    if (i < text.length) {
+                        div.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
+                        i++; scrollToBottom(); setTimeout(type, speed);
+                    } else { resolve(); }
+                }
+                type();
+            });
+        }
+
+        async function bootSequence() {
+            hiddenInput.disabled = true;
+            printHTML('<span class="title-text">Booting SRIKRISHNA-OS v2.0.26...</span>');
+            await sleep(400);
+            await typeWriter("Loading module: Machine Learning... OK", 5);
+            await typeWriter("Loading module: MLOps... OK", 5);
+            await typeWriter("Loading module: Cloud Native Systems... OK", 5);
+            await sleep(200);
+            printLine("Access granted.", "success-text");
+            await sleep(200);
+            printHTML("<br>Welcome to <span class=\"title-text\">SRIKRISHNA'S TERMINAL ADVENTURE</span>.");
+            printHTML("Type <span class=\"highlight\">game --help</span> to see instructions or <span class=\"highlight\">play</span> to begin your journey.");
+            if (gameState.level > 0 && gameState.level <= 5) {
+                printLine(`\nYou have a saved game at Level ${gameState.level}. Type "play" to resume.`, "highlight");
+            } else if (gameState.level === 6) {
+                printLine(`\nYou have completed the game! Feel free to explore or type "restart" to play again.`, "highlight");
+            }
+            printHTML("<br>");
+            hiddenInput.disabled = false; isBooting = false; focusInput();
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter') {
+                const cmd = hiddenInput.value;
+                if (cmd.trim() !== '') {
+                    cmdHistory.push(cmd);
+                    historyIdx = cmdHistory.length;
+                }
+                printHTML(`<br><span class="prompt">srikrishna@portfolio:~$</span>${cmd}`);
+                hiddenInput.value = ''; cmdText.textContent = '';
+                processCommand(cmd);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIdx > 0) {
+                    historyIdx--;
+                    hiddenInput.value = cmdHistory[historyIdx];
+                    cmdText.textContent = hiddenInput.value;
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIdx < cmdHistory.length - 1) {
+                    historyIdx++;
+                    hiddenInput.value = cmdHistory[historyIdx];
+                    cmdText.textContent = hiddenInput.value;
+                } else {
+                    historyIdx = cmdHistory.length;
+                    hiddenInput.value = '';
+                    cmdText.textContent = '';
+                }
+            }
+        }
+
+        function processCommand(rawCmd) {
+            const cmd = rawCmd.trim().toLowerCase();
+            gameState.commandsTyped++;
+
+            if (gameState.commandsTyped === 50 && !gameState.easterEggs.includes("TermMaster")) {
+                gameState.easterEggs.push("TermMaster"); awardBadge("Terminal Master");
+            }
+
+            if (gameState.level > 0 && gameState.level <= 5) {
+                const currentLvl = LEVELS[gameState.level - 1];
+                if (["clear", "ls", "help", "game --help", "restart"].includes(cmd)) {
+                    // fall through
+                } else {
+                    if (currentLvl.answers.includes(cmd)) {
+                        printLine(">>> CORRECT! Level Complete.", "success-text");
+                        awardBadge(currentLvl.badge);
+                        gameState.level++; saveGame();
+
+                        if (gameState.level > 5) setTimeout(endGame, 1000);
+                        else setTimeout(playNextLevel, 1000);
+                        return;
+                    } else {
+                        printLine(">>> Incorrect command or action. Try again.", "error-text");
+                        return;
+                    }
+                }
+            }
+
+            if (cmd === '') return;
+
+            if (cmd.startsWith('setkey ')) {
+                const key = rawCmd.substring(7).trim();
+                localStorage.setItem('srikrishna_gemini_api_key', key);
+                aiApiKey = key;
+                printLine("API Key saved to local storage for this session.", "success-text");
+                return;
+            }
+
+            if (cmd.startsWith('ask ') || cmd.startsWith('chat ')) {
+                const question = rawCmd.substring(rawCmd.indexOf(' ') + 1).trim();
+                if (question) {
+                    handleAskCommand(question);
+                } else {
+                    printLine("Usage: ask <your question>");
+                }
+                return;
+            }
+
+            switch (cmd) {
+                case 'ls':
+                case 'help':
+                    printLine("Available commands:");
+                    printLine("  play        - Start or resume the game");
+                    printLine("  game --help - How to play");
+                    printLine("  skills      - View my technical skills");
+                    printLine("  projects    - View my projects");
+                    printLine("  resume      - Read executive summary");
+                    printLine("  contact     - View contact info");
+                    printLine("  ask <query> - Ask the AI about me (requires API key)");
+                    printLine("  chat <query>- Same as ask");
+                    printLine("  setkey <key>- Set your Gemini API key");
+                    printLine("  clear       - Clear terminal output");
+                    printLine("  restart     - Reset game progress");
+                    break;
+                case 'play':
+                    if (gameState.level === 0) {
+                        printLine("Starting a new game...", "title-text");
+                        gameState.level = 1; saveGame();
+                        setTimeout(playNextLevel, 1000);
+                    } else if (gameState.level <= 5) {
+                        printLine(`Resuming from Level ${gameState.level}...`, "title-text");
+                        setTimeout(playNextLevel, 500);
+                    } else {
+                        printLine("You have already completed the game. Type 'restart' to play again.");
+                    }
+                    break;
+                case 'game --help':
+                    printLine("HOW TO PLAY:");
+                    printLine("1. Type 'play' to begin.");
+                    printLine("2. Read the level description and type the correct command or answer to progress.");
+                    printLine("3. Find secret commands to unlock special badges.");
+                    printLine("4. Your progress is saved automatically.");
+                    break;
+                case 'skills':
+                    printHTML("<span class='title-text'>TECHNICAL SKILLS</span>");
+                    MY_DATA.skills.forEach(s => printLine("  " + s));
+                    break;
+                case 'projects':
+                    printHTML("<span class='title-text'>SELECTED PROJECTS</span>");
+                    MY_DATA.projects.forEach(p => printLine("  " + p));
+                    printHTML("<br><span class='title-text'>FUTURE FLAGSHIPS</span>");
+                    MY_DATA.future.forEach(f => printLine("  " + f));
+                    break;
+                case 'resume':
+                    printHTML("<span class='title-text'>EXECUTIVE SUMMARY</span>");
+                    printLine(MY_DATA.executiveSummary.join(" "));
+                    printHTML("<br><span class='title-text'>CORE STRENGTHS</span>");
+                    MY_DATA.coreStrengths.forEach(s => printLine("  " + s));
+                    break;
+                case 'contact':
+                    printHTML("<span class='title-text'>CONTACT INFORMATION</span>");
+                    printHTML(`  Email   : <a href="mailto:${MY_DATA.contact.Email}" style="color:#0ff">${MY_DATA.contact.Email}</a>`);
+                    printHTML(`  GitHub  : <a href="${MY_DATA.contact.GitHub}" target="_blank" style="color:#0ff">${MY_DATA.contact.GitHub}</a>`);
+                    printHTML(`  LinkedIn: <a href="${MY_DATA.contact.LinkedIn}" target="_blank" style="color:#0ff">${MY_DATA.contact.LinkedIn}</a>`);
+                    break;
+                case 'clear':
+                    outputDiv.innerHTML = '';
+                    break;
+                case 'restart':
+                    gameState = { level: 0, badges: [], easterEggs: [], commandsTyped: 0 };
+                    saveGame(); badgesPanel.innerHTML = '';
+                    printLine("Game progress reset.", "success-text");
+                    break;
+                case 'sudo':
+                    printLine("srikrishna is not in the sudoers file. This incident will be reported.", "error-text");
+                    if (!gameState.easterEggs.includes("sudo")) {
+                        gameState.easterEggs.push("sudo"); awardBadge("Hacker Wannabe");
+                    }
+                    break;
+                case 'debug':
+                    printHTML("<span class='highlight'>[DEBUG STATS]</span>");
+                    printLine(`Commands Issued: ${gameState.commandsTyped}`);
+                    printLine(`Easter Eggs Found: ${gameState.easterEggs.length}`);
+                    printLine("Lines of code written: 500,000+");
+                    printLine("Coffees consumed: 1,337");
+                    if (!gameState.easterEggs.includes("debug")) {
+                        gameState.easterEggs.push("debug"); awardBadge("Debugger");
+                    }
+                    break;
+                case 'matrix':
+                    startMatrix();
+                    if (!gameState.easterEggs.includes("matrix")) {
+                        gameState.easterEggs.push("matrix"); awardBadge("The One");
+                    }
+                    break;
+                default:
+                    printLine(`Command not found: ${rawCmd}. Type 'help' for a list of commands.`);
+            }
+        }
+
+        function playNextLevel() {
+            printLine("\n-------------------------------------------------------------");
+            const lvl = LEVELS[gameState.level - 1];
+            printHTML(`<span class="title-text">${lvl.title}</span>`);
+            printLine(lvl.desc);
+            printLine("-------------------------------------------------------------");
+        }
+
+        function endGame() {
+            printLine("\n=============================================================", "success-text");
+            printHTML("<span class='title-text'>GAME COMPLETE!</span>");
+            printLine("Congratulations! You have completed SRIKRISHNA's developer journey.");
+            printLine("=============================================================", "success-text");
+            printHTML("<br>To get in touch, type <span class='highlight'>contact</span>.");
+        }
+
+        function awardBadge(badgeName) {
+            if (!gameState.badges.includes(badgeName)) {
+                gameState.badges.push(badgeName);
+                const span = document.createElement('div');
+                span.className = 'badge'; span.innerText = `🏆 ${badgeName}`;
+                badgesPanel.appendChild(span); saveGame();
+            }
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        let matrixInterval;
+        function startMatrix() {
+            printLine("Entering the Matrix...");
+            matrixCanvas.style.display = 'block';
+            const ctx = matrixCanvas.getContext('2d');
+            matrixCanvas.width = window.innerWidth; matrixCanvas.height = window.innerHeight;
+
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
+            const fontSize = 16; const cols = matrixCanvas.width / fontSize;
+            const drops = Array(Math.floor(cols)).fill(1);
+
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+            matrixInterval = setInterval(() => {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                ctx.fillStyle = "#0F0"; ctx.font = fontSize + "px arial";
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(matrixInterval);
+                matrixCanvas.style.display = 'none';
+                printLine("Matrix disconnected.");
+            }, 5000);
+        }
+
+        window.addEventListener('resize', () => {
+            if (matrixCanvas.style.display === 'block') {
+                matrixCanvas.width = window.innerWidth; matrixCanvas.height = window.innerHeight;
+            }
+        });
+
+        async function handleAskCommand(question) {
+            if (!aiApiKey) {
+                printLine("AI Feature requires a Gemini API Key.", "highlight");
+                printLine("Get one at: https://aistudio.google.com/app/apikey");
+                printLine("Type 'setkey <your_api_key>' to configure it for this session.");
+                return;
+            }
+
+            printLine("Thinking...", "highlight");
+            hiddenInput.disabled = true;
+
+            const resumeContext = "MY_DATA = " + JSON.stringify(MY_DATA, null, 2) + "\\n\\nYou are an AI assistant representing SRIKRISHNA S. Answer questions based on the MY_DATA provided. Be friendly, concise, and format your response neatly for a terminal. Keep answers under 2-3 short paragraphs.";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${aiApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: resumeContext + "\\n\\nQuestion: " + question
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || "Unknown API Error");
+                }
+
+                const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (answer) {
+                    printLine("");
+                    printLine("--- AI RESPONSE ---", "title-text");
+                    printLine(answer);
+                    printLine("-------------------", "title-text");
+                } else {
+                    printLine("Received an empty response from AI.", "error-text");
+                }
+            } catch (error) {
+                printLine(`Error: ${error.message}`, "error-text");
+                if (error.message.includes('API_KEY_INVALID') || error.message.includes('API key not valid')) {
+                    printLine("Your API key might be invalid. Use 'setkey <new_key>' to update it.", "highlight");
+                }
+            } finally {
+                hiddenInput.disabled = false;
+                focusInput();
+                scrollToBottom();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+
+</html>

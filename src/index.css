@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-zinc-950 text-slate-200 antialiased selection:bg-cyan-500/30 overflow-x-hidden;
+        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" fill="%2306b6d4" stroke="%23ffffff" stroke-width="1.5" stroke-linejoin="round"/></svg>') 12 12, auto;
+    }
+
+    a,
+    button,
+    [role="button"],
+    input,
+    select,
+    textarea,
+    .cursor-pointer {
+        cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="%2322d3ee" /><circle cx="12" cy="12" r="9" stroke="%2322d3ee" stroke-width="2" opacity="0.6"/></svg>') 12 12, pointer !important;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+.glass-panel {
+    @apply bg-zinc-900/60 backdrop-blur-lg border border-white/5 shadow-2xl;
+}
+
+.text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600;
+}

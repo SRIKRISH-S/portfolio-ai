@@ -24,9 +24,11 @@ const Header = () => {
                     PORTFOLIO<span className="text-cyan-400">.</span>
                 </a>
                 <nav className="hidden md:block">
-                    <ul className="flex space-x-10 text-sm font-semibold tracking-wide text-zinc-300">
+                    <ul className="flex space-x-8 text-sm font-semibold tracking-wide text-zinc-300">
                         <li><a href="#about" className="hover:text-cyan-400 hover:tracking-[0.2em] transition-all duration-300">ABOUT</a></li>
+                        <li><a href="#internships" className="hover:text-cyan-400 hover:tracking-[0.2em] transition-all duration-300">INTERNSHIPS</a></li>
                         <li><a href="#projects" className="hover:text-cyan-400 hover:tracking-[0.2em] transition-all duration-300">PROJECTS</a></li>
+                        <li><a href="#certificates" className="hover:text-cyan-400 hover:tracking-[0.2em] transition-all duration-300">CERTIFICATES</a></li>
                         <li><a href="#ai-chat" className="hover:text-cyan-400 hover:tracking-[0.2em] transition-all duration-300">AI CHAT</a></li>
                     </ul>
                 </nav>

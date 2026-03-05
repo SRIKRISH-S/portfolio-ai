@@ -25,6 +25,14 @@ const Footer = () => {
                         <span className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-white transition-colors"></span>
                         X
                     </a>
+                    <a href="https://leetcode.com/u/KRISHNA-66/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-orange-400 hover:-translate-y-1 hover:shadow-orange-500/20 transition-all duration-300 flex items-center gap-2 group">
+                        <span className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-orange-400 transition-colors"></span>
+                        LeetCode
+                    </a>
+                    <a href="https://www.codechef.com/users/krish_970" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-yellow-500 hover:-translate-y-1 hover:shadow-yellow-500/20 transition-all duration-300 flex items-center gap-2 group">
+                        <span className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-yellow-500 transition-colors"></span>
+                        CodeChef
+                    </a>
                     <a href="mailto:your.email@example.com" className="text-slate-400 hover:text-emerald-400 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 group">
                         <span className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-emerald-400 transition-colors"></span>
                         Email

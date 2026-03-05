@@ -6,6 +6,8 @@ import AIChat from './components/AIChat';
 import Footer from './components/Footer';
 import TerminalGame from './components/TerminalGame';
 import CursorTrail from './components/CursorTrail';
+import Certificates from './components/Certificates';
+import Internship from './components/Internship';
 
 function App() {
     return (
@@ -15,7 +17,9 @@ function App() {
             <main className="flex-grow">
                 <Hero />
                 <About />
+                <Internship />
                 <Projects />
+                <Certificates />
                 <AIChat />
             </main>
             <Footer />

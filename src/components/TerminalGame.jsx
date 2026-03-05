@@ -63,6 +63,22 @@ const MY_DATA = {
     ]
 };
 
+const ALL_ACHIEVEMENTS = [
+    { name: "LeetCode Champion", icon: "🏆", desc: "350+ LeetCode problems solved" },
+    { name: "Space Technology Intern", icon: "🚀", desc: "Internship at ISRO (IPRC)" },
+    { name: "Hackathon Hero", icon: "🥇", desc: "Hackathon Project Winner/Finalist" },
+    { name: "ML Explorer", icon: "🤖", desc: "AI/ML Practitioner" },
+    { name: "Cloud Native", icon: "☁️", desc: "Cloud Deployment Expert" },
+    { name: "Certificate Collection", icon: "📜", desc: "Certified Professional" },
+    { name: "Early Adopter", icon: "👶", desc: "Completed Level 1 of the Dev Journey" },
+    { name: "Builder", icon: "🏗️", desc: "Completed Level 2 of the Dev Journey" },
+    { name: "Production Pro", icon: "🏭", desc: "Completed Level 5 of the Dev Journey" },
+    { name: "Terminal Master", icon: "⌨️", desc: "Typed 50 commands in the terminal" },
+    { name: "Hacker Wannabe", icon: "🕵️", desc: "Tried to use the sudo command" },
+    { name: "Debugger", icon: "🐛", desc: "Found the debug stats easter egg" },
+    { name: "The One", icon: "💊", desc: "Entered the Matrix" },
+];
+
 const LEVELS = [
     {
         title: "LEVEL 1: The Beginning",
@@ -223,8 +239,10 @@ const TerminalGame = () => {
     const addErrorLine = (text) => addLine(text, 'error');
 
     const awardBadge = (badgeName) => {
-        if (!badges.includes(badgeName)) {
-            setBadges(prev => [...prev, badgeName]);
+        const isStringOrObj = (b) => (typeof b === 'string' ? b : b.name) === badgeName;
+        if (!badges.some(isStringOrObj)) {
+            const dateStr = new Date().toLocaleDateString();
+            setBadges(prev => [...prev, { name: badgeName, date: dateStr }]);
             addSysLine(`🏆 ACHIEVEMENT UNLOCKED: ${badgeName} 🏆`, 'success');
         }
     };
@@ -249,6 +267,63 @@ const TerminalGame = () => {
                         </div>
                     </div>
                 ))}
+            </div>
+        );
+    };
+
+    const renderAchievementsLayout = () => {
+        const unlockedCount = badges.length;
+        const totalCount = ALL_ACHIEVEMENTS.length;
+        const percent = Math.round((unlockedCount / totalCount) * 100);
+
+        const shareText = `I just unlocked ${unlockedCount}/${totalCount} achievements on Srikrishna's Terminal Portfolio! Can you find them all?`;
+        const shareUrl = `https://linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
+
+        return (
+            <div className="mt-4 mb-6 space-y-4">
+                <div className="text-xl font-bold text-yellow-400 mb-2 border-b border-yellow-500/30 pb-2 flex justify-between items-center">
+                    <span>./achievements/gallery</span>
+                    <a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded flex items-center transition-colors">
+                        Share <ExternalLink size={12} className="ml-1" />
+                    </a>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <div className="flex justify-between text-xs mb-1">
+                        <span className="text-zinc-400">Completion Progress</span>
+                        <span className="text-green-400 font-bold">{percent}% ({unlockedCount}/{totalCount})</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
+                        <div className="bg-green-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    {ALL_ACHIEVEMENTS.map((ach, idx) => {
+                        const unlockedBadge = badges.find(b => (typeof b === 'string' ? b : b.name) === ach.name);
+                        const isUnlocked = !!unlockedBadge;
+                        const dateStr = unlockedBadge && typeof unlockedBadge === 'object' ? unlockedBadge.date : 'Legacy unlock';
+
+                        return (
+                            <div key={idx} className={`p-3 rounded border ${isUnlocked ? 'bg-green-950/20 border-green-500/30' : 'bg-black/50 border-white/5 opacity-50'} flex items-start space-x-3 transition-colors`}>
+                                <div className="text-2xl mt-1">{isUnlocked ? ach.icon : '❓'}</div>
+                                <div>
+                                    <div className={`font-bold ${isUnlocked ? 'text-green-400' : 'text-zinc-500'}`}>
+                                        {isUnlocked ? ach.name : '???'}
+                                    </div>
+                                    <div className="text-xs text-zinc-400 mt-1">
+                                        {isUnlocked ? ach.desc : 'Keep exploring to unlock'}
+                                    </div>
+                                    {isUnlocked && (
+                                        <div className="text-[10px] text-green-500/60 mt-2 font-mono">
+                                            Unlocked: {dateStr}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         );
     };
@@ -317,6 +392,7 @@ const TerminalGame = () => {
                         <div><span className="text-yellow-400 w-24 inline-block">contact</span> - View contact info</div>
                         <div><span className="text-yellow-400 w-24 inline-block">clear</span> - Clear terminal output</div>
                         <div><span className="text-yellow-400 w-24 inline-block">restart</span> - Reset game progress</div>
+                        <div><span className="text-yellow-400 w-24 inline-block">achievements</span> - View unlocked badges</div>
                     </div>
                 );
                 break;
@@ -403,8 +479,69 @@ const TerminalGame = () => {
                     addSysLine("Matrix disconnected.");
                 }, 5000);
                 break;
+            case 'achievements':
+            case 'badges':
+                addLine(renderAchievementsLayout());
+                break;
+            case 'leetcode':
+                awardBadge("LeetCode Champion");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">LEETCODE STATS</span>);
+                addSysLine("- 350+ Problems Solved.");
+                addSysLine("- Topics: Data Structures, Algorithms, Dynamic Programming, Graphs.");
+                addSysLine("- Consistent daily solver.");
+                break;
+            case 'isro':
+            case 'internship':
+                awardBadge("Space Technology Intern");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">ISRO (IPRC) INTERNSHIP</span>);
+                addSysLine("- Worked at ISRO Propulsion Complex (IPRC), Mahendragiri.");
+                addSysLine("- Studied telemetry and aerospace engineering principles.");
+                addSysLine("- For more info, check the INTERNSHIPS sections at the top right.");
+                break;
+            case 'hackathon':
+            case 'proactifab':
+                awardBadge("Hackathon Hero");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">PROACTIFAB - HACKATHON WINNING PROJECT</span>);
+                addSysLine("- Predictive maintenance for MSMEs.");
+                addSysLine("- Tech: PyTorch, Docker, FastAPI, React.");
+                break;
+            case 'ml':
+            case 'ai':
+                awardBadge("ML Explorer");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">AI/ML PRACTITIONER</span>);
+                addSysLine("- Familiar with PyTorch, TensorFlow, Hugging Face.");
+                addSysLine("- Built LocalBizAI using LangChain and Speech-to-text APIs.");
+                addSysLine("- Integrated Gemini API for portfolio AI Chat.");
+                break;
+            case 'cloud':
+            case 'kubernetes':
+                awardBadge("Cloud Native");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">CLOUD DEPLOYMENT EXPERT</span>);
+                addSysLine("- Experienced with Docker containerization.");
+                addSysLine("- Deployed applications using Kubernetes clusters.");
+                addSysLine("- CI/CD automation and MLOps workflows.");
+                break;
+            case 'certificates':
+                awardBadge("Certificate Collection");
+                addLine(<span className="text-yellow-400 font-bold mb-2 block">CERTIFICATES</span>);
+                addSysLine("- AWS Cloud Practitioner");
+                addSysLine("- Google Data Analytics");
+                addSysLine("- Deloitte Job Simulation");
+                addSysLine("- AICTE Virtual Internship");
+                addSysLine("- Codec Technologies AI Intern");
+                addSysLine("Type 'certificate [name]' for details or check the UI section.");
+                break;
             default:
-                addSysLine(`Command not found: ${rawCmd}. Type 'help' for a list of commands.`);
+                if (normalizedCmd.startsWith('certificate ')) {
+                    const certName = normalizedCmd.replace('certificate ', '');
+                    awardBadge("Certificate Collection");
+                    addSysLine(`Searching for certificate matching: ${certName}...`);
+                    addSysLine("Found in database. Details:");
+                    addSysLine("- This is a verified professional certificate.");
+                    addSysLine("- View the full Certificate section on the portfolio for visual proof and AI descriptions.");
+                } else {
+                    addSysLine(`Command not found: ${rawCmd}. Type 'help' for a list of commands.`);
+                }
         }
     };
 
@@ -523,7 +660,7 @@ const TerminalGame = () => {
                                         animate={{ x: 0, opacity: 1 }}
                                         className="bg-green-500/20 border border-green-500 text-green-400 px-3 py-1 rounded text-xs font-bold shadow-[0_0_10px_rgba(34,197,94,0.3)] backdrop-blur-sm"
                                     >
-                                        🏆 {b}
+                                        🏆 {typeof b === 'string' ? b : b.name}
                                     </motion.div>
                                 ))}
                             </div>
